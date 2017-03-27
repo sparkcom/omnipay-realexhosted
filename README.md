@@ -1,0 +1,2 @@
+Postfinance adapter for omnipay
+========================

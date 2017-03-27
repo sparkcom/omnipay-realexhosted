@@ -1,0 +1,21 @@
+{
+    "name": "monosolutions/omnipay-realexhosted",
+    "description": "Realexhosted driver for the Omnipay payment processing library",
+    "require": {
+        "omnipay/common": "~2.0"
+    },
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Thomas Faurbye Nielsen",
+            "email": "tfn@monosolutions.com"
+        }
+    ],
+    "minimum-stability": "stable",
+    "autoload": {
+        "psr-0": { "Omnipay\\Realexhosted\\" : "src/" }
+    },
+    "require-dev": {
+        "omnipay/tests": "~2.0"
+    }
+}
