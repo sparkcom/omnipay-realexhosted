@@ -5,7 +5,7 @@ use Omnipay\Common\Message\AbstractResponse;
 use Omnipay\Common\Message\RedirectResponseInterface;
 
 /**
- * Epay Purchase Response
+ * Realex Purchase Response
  */
 class PurchaseResponse extends AbstractResponse implements RedirectResponseInterface
 {

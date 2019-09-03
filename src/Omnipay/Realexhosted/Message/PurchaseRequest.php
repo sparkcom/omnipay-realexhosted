@@ -10,7 +10,7 @@ use Symfony\Component\HttpFoundation\ParameterBag;
 
 
 /**
- * Epay Purchase Request
+ * Realex Purchase Request
  */
 class PurchaseRequest extends AbstractRequest
 {
