@@ -62,6 +62,7 @@ class PurchaseRequest extends AbstractRequest
         $this->validate('merchantId', 'amount', 'transactionReference', 'currency', 'sharedSecret', 'timestamp');
 
         $data = $this->parameters->all();
+
         $data = array_change_key_case($data, CASE_UPPER);
         $data['AMOUNT'] = $this->getAmountInteger();
         $data['CURRENCY'] = $this->getCurrency();
@@ -71,6 +72,27 @@ class PurchaseRequest extends AbstractRequest
         $data['AUTO_SETTLE_FLAG'] = 1;
         $data['MERCHANT_ID'] = $this->getMerchantId();
         $data['SHA1HASH'] = $this->generateHash($data);
+
+        $data["HPP_VERSION"] = "2";
+        $data["HPP_CHANNEL"] = "ECOM";
+
+        $data["HPP_CUSTOMER_EMAIL"] = "test@example.com";
+        $data["HPP_CUSTOMER_PHONENUMBER_MOBILE"] = "44|789456123";
+        $data["HPP_BILLING_STREET1"] = "Flat 123";
+        $data["HPP_BILLING_STREET2"] = "House 456";
+        $data["HPP_BILLING_STREET3"] = "Unit 4";
+        $data["HPP_BILLING_CITY"] = "Halifax";
+        $data["HPP_BILLING_POSTALCODE"] = "W5 9HR";
+        $data["HPP_BILLING_COUNTRY"] = "826";
+        $data["HPP_SHIPPING_STREET1"] = "Apartment 852";
+        $data["HPP_SHIPPING_STREET2"] = "Complex 741";
+        $data["HPP_SHIPPING_STREET3"] = "House 963";
+        $data["HPP_SHIPPING_CITY"] = "Chicago";
+        $data["HPP_SHIPPING_STATE"] = "IL";
+        $data["HPP_SHIPPING_POSTALCODE"] = "50001";
+        $data["HPP_SHIPPING_COUNTRY"] = "840";
+        $data["HPP_ADDRESS_MATCH_INDICATOR"] = "FALSE";
+        $data["HPP_CHALLENGE_REQUEST_INDICATOR"] = "NO_PREFERENCE";
 
         unset($data['NOTIFYURL']);
         unset($data['TRANSACTIONREFERENCE']);
@@ -108,7 +130,6 @@ class PurchaseRequest extends AbstractRequest
     protected function generateHash($data)
     {
         $hashString = "TIMESTAMP.MERCHANT_ID.ORDER_ID.AMOUNT.CURRENCY";
-
 
         return sha1(sha1(strtr($hashString, $data)) . ".{$this->getSharedSecret()}");
     }
