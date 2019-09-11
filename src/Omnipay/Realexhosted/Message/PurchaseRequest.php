@@ -2,6 +2,7 @@
 
 namespace Omnipay\Realexhosted\Message;
 
+use CommerceGuys\Addressing\Country\CountryRepository;
 use Omnipay\Common\Helper;
 use Omnipay\Common\Message\AbstractRequest;
 use Omnipay\Common\Exception\RuntimeException;
@@ -34,6 +35,11 @@ class PurchaseRequest extends AbstractRequest
         return $this->setParameter('sharedSecret', $secret);
     }
 
+    public function setOrder($order)
+    {
+        return $this->setParameter('order', $order);
+    }
+
     /**
      * @param \DateTime|integer|string $timestamp
      */
@@ -63,6 +69,12 @@ class PurchaseRequest extends AbstractRequest
 
         $data = $this->parameters->all();
 
+        \base_log::log(print_r($data['order'], TRUE));
+
+        $order = $data['order'];
+        $billingInformation = $order->getBillingInformation();
+        $shippingInformation = $order->getShippingInformation();
+
         $data = array_change_key_case($data, CASE_UPPER);
         $data['AMOUNT'] = $this->getAmountInteger();
         $data['CURRENCY'] = $this->getCurrency();
@@ -76,21 +88,34 @@ class PurchaseRequest extends AbstractRequest
         $data["HPP_VERSION"] = "2";
         $data["HPP_CHANNEL"] = "ECOM";
 
-        $data["HPP_CUSTOMER_EMAIL"] = "test@example.com";
-        $data["HPP_CUSTOMER_PHONENUMBER_MOBILE"] = "44|789456123";
-        $data["HPP_BILLING_STREET1"] = "Flat 123";
-        $data["HPP_BILLING_STREET2"] = "House 456";
-        $data["HPP_BILLING_STREET3"] = "Unit 4";
-        $data["HPP_BILLING_CITY"] = "Halifax";
-        $data["HPP_BILLING_POSTALCODE"] = "W5 9HR";
-        $data["HPP_BILLING_COUNTRY"] = "826";
-        $data["HPP_SHIPPING_STREET1"] = "Apartment 852";
-        $data["HPP_SHIPPING_STREET2"] = "Complex 741";
-        $data["HPP_SHIPPING_STREET3"] = "House 963";
-        $data["HPP_SHIPPING_CITY"] = "Chicago";
-        $data["HPP_SHIPPING_STATE"] = "IL";
-        $data["HPP_SHIPPING_POSTALCODE"] = "50001";
-        $data["HPP_SHIPPING_COUNTRY"] = "840";
+        $countryRepository = new CountryRepository();
+
+        \base_log::log(get_class($countryRepository));
+        \base_log::log(print_r($countryRepository, TRUE));
+
+        $billingCountry = $countryRepository->get($billingInformation->getCountryCode());
+        $shippingCountry = $countryRepository->get($shippingInformation->getCountryCode());
+
+        // BEGIN: Mandatory SCA fields
+        $data["HPP_CUSTOMER_EMAIL"] = $billingInformation->getEmail();
+        $data["HPP_CUSTOMER_PHONENUMBER_MOBILE"] = $billingInformation->getPhone();
+
+        $data["HPP_BILLING_STREET1"] = $billingInformation->getAddressLine1();
+        $data["HPP_BILLING_STREET2"] = $billingInformation->getAddressLine2();
+        $data["HPP_BILLING_STREET3"] = $billingInformation->getAddressLine2();
+        $data["HPP_BILLING_CITY"] = $billingInformation->getLocality();
+        $data["HPP_BILLING_POSTALCODE"] = $billingInformation->getPostalCode();
+        $data["HPP_BILLING_COUNTRY"] = $billingCountry->getNumericCode();
+
+        $data["HPP_SHIPPING_STREET1"] = $shippingInformation->getAddressLine1();
+        $data["HPP_SHIPPING_STREET2"] = $shippingInformation->getAddressLine2();
+        $data["HPP_SHIPPING_STREET3"] = $shippingInformation->getAddressLine2();
+        $data["HPP_SHIPPING_CITY"] = $shippingInformation->getLocality();
+        $data["HPP_SHIPPING_STATE"] = $shippingInformation->getAdministrativeArea();
+        $data["HPP_SHIPPING_POSTALCODE"] = $shippingInformation->getPostalCode();
+        $data["HPP_SHIPPING_COUNTRY"] = $shippingCountry->getNumericCode();
+        // END: Mandatory SCA fields.
+
         $data["HPP_ADDRESS_MATCH_INDICATOR"] = "FALSE";
         $data["HPP_CHALLENGE_REQUEST_INDICATOR"] = "NO_PREFERENCE";
 
