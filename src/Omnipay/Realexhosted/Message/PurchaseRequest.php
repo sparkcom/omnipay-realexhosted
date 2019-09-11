@@ -69,11 +69,25 @@ class PurchaseRequest extends AbstractRequest
 
         $data = $this->parameters->all();
 
-        \base_log::log(print_r($data['order'], TRUE));
-
         $order = $data['order'];
         $billingInformation = $order->getBillingInformation();
         $shippingInformation = $order->getShippingInformation();
+
+        $countryRepository = new CountryRepository();
+
+        $billingCountryCode = strtolower($billingInformation->getCountryCode());
+        if (empty($billingCountry)) {
+            throw new \InvalidArgumentException('Unknown or empty billing country');
+        }
+
+        $shippingCountryCode = strtolower($shippingInformation->getCountryCode());
+        if (empty($shippingCountry)) {
+            throw new \InvalidArgumentException('Unknown or empty shipping country');
+        }
+
+        $billingCountry = $countryRepository->get($billingCountryCode);
+        $shippingCountry = $countryRepository->get($shippingCountryCode);
+
 
         $data = array_change_key_case($data, CASE_UPPER);
         $data['AMOUNT'] = $this->getAmountInteger();
@@ -87,14 +101,6 @@ class PurchaseRequest extends AbstractRequest
 
         $data["HPP_VERSION"] = "2";
         $data["HPP_CHANNEL"] = "ECOM";
-
-        $countryRepository = new CountryRepository();
-
-        \base_log::log(get_class($countryRepository));
-        \base_log::log(print_r($countryRepository, TRUE));
-
-        $billingCountry = $countryRepository->get($billingInformation->getCountryCode());
-        $shippingCountry = $countryRepository->get($shippingInformation->getCountryCode());
 
         // BEGIN: Mandatory SCA fields
         $data["HPP_CUSTOMER_EMAIL"] = $billingInformation->getEmail();
