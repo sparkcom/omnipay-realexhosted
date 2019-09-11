@@ -76,12 +76,12 @@ class PurchaseRequest extends AbstractRequest
         $countryRepository = new CountryRepository();
 
         $billingCountryCode = strtolower($billingInformation->getCountryCode());
-        if (empty($billingCountry)) {
+        if (empty($billingCountryCode)) {
             throw new \InvalidArgumentException('Unknown or empty billing country');
         }
 
         $shippingCountryCode = strtolower($shippingInformation->getCountryCode());
-        if (empty($shippingCountry)) {
+        if (empty($shippingCountryCode)) {
             throw new \InvalidArgumentException('Unknown or empty shipping country');
         }
 
