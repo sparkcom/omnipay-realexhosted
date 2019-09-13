@@ -2,6 +2,7 @@
 
 namespace Omnipay\Realexhosted\Message;
 
+use CommerceGuys\Addressing\Country\CountryRepository;
 use Omnipay\Common\Helper;
 use Omnipay\Common\Message\AbstractRequest;
 use Omnipay\Common\Exception\RuntimeException;
@@ -10,7 +11,7 @@ use Symfony\Component\HttpFoundation\ParameterBag;
 
 
 /**
- * Epay Purchase Request
+ * Realex Purchase Request
  */
 class PurchaseRequest extends AbstractRequest
 {
@@ -32,6 +33,11 @@ class PurchaseRequest extends AbstractRequest
     public function setSharedSecret($secret)
     {
         return $this->setParameter('sharedSecret', $secret);
+    }
+
+    public function setOrder($order)
+    {
+        return $this->setParameter('order', $order);
     }
 
     /**
@@ -62,6 +68,27 @@ class PurchaseRequest extends AbstractRequest
         $this->validate('merchantId', 'amount', 'transactionReference', 'currency', 'sharedSecret', 'timestamp');
 
         $data = $this->parameters->all();
+
+        $order = $data['order'];
+        $billingInformation = $order->getBillingInformation();
+        $shippingInformation = $order->getShippingInformation();
+
+        $countryRepository = new CountryRepository();
+
+        $billingCountryCode = strtolower($billingInformation->getCountryCode());
+        if (empty($billingCountryCode)) {
+            throw new \InvalidArgumentException('Unknown or empty billing country');
+        }
+
+        $shippingCountryCode = strtolower($shippingInformation->getCountryCode());
+        if (empty($shippingCountryCode)) {
+            throw new \InvalidArgumentException('Unknown or empty shipping country');
+        }
+
+        $billingCountry = $countryRepository->get($billingCountryCode);
+        $shippingCountry = $countryRepository->get($shippingCountryCode);
+
+
         $data = array_change_key_case($data, CASE_UPPER);
         $data['AMOUNT'] = $this->getAmountInteger();
         $data['CURRENCY'] = $this->getCurrency();
@@ -71,6 +98,32 @@ class PurchaseRequest extends AbstractRequest
         $data['AUTO_SETTLE_FLAG'] = 1;
         $data['MERCHANT_ID'] = $this->getMerchantId();
         $data['SHA1HASH'] = $this->generateHash($data);
+
+        $data["HPP_VERSION"] = "2";
+        $data["HPP_CHANNEL"] = "ECOM";
+
+        // BEGIN: Mandatory SCA fields
+        $data["HPP_CUSTOMER_EMAIL"] = $billingInformation->getEmail();
+        $data["HPP_CUSTOMER_PHONENUMBER_MOBILE"] = $billingInformation->getPhone();
+
+        $data["HPP_BILLING_STREET1"] = $billingInformation->getAddressLine1();
+        $data["HPP_BILLING_STREET2"] = $billingInformation->getAddressLine2();
+        $data["HPP_BILLING_STREET3"] = $billingInformation->getAddressLine2();
+        $data["HPP_BILLING_CITY"] = $billingInformation->getLocality();
+        $data["HPP_BILLING_POSTALCODE"] = $billingInformation->getPostalCode();
+        $data["HPP_BILLING_COUNTRY"] = $billingCountry->getNumericCode();
+
+        $data["HPP_SHIPPING_STREET1"] = $shippingInformation->getAddressLine1();
+        $data["HPP_SHIPPING_STREET2"] = $shippingInformation->getAddressLine2();
+        $data["HPP_SHIPPING_STREET3"] = $shippingInformation->getAddressLine2();
+        $data["HPP_SHIPPING_CITY"] = $shippingInformation->getLocality();
+        $data["HPP_SHIPPING_STATE"] = $shippingInformation->getAdministrativeArea();
+        $data["HPP_SHIPPING_POSTALCODE"] = $shippingInformation->getPostalCode();
+        $data["HPP_SHIPPING_COUNTRY"] = $shippingCountry->getNumericCode();
+        // END: Mandatory SCA fields.
+
+        $data["HPP_ADDRESS_MATCH_INDICATOR"] = "FALSE";
+        $data["HPP_CHALLENGE_REQUEST_INDICATOR"] = "NO_PREFERENCE";
 
         unset($data['NOTIFYURL']);
         unset($data['TRANSACTIONREFERENCE']);
@@ -108,7 +161,6 @@ class PurchaseRequest extends AbstractRequest
     protected function generateHash($data)
     {
         $hashString = "TIMESTAMP.MERCHANT_ID.ORDER_ID.AMOUNT.CURRENCY";
-
 
         return sha1(sha1(strtr($hashString, $data)) . ".{$this->getSharedSecret()}");
     }

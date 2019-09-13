@@ -6,7 +6,7 @@ use Omnipay\Common\AbstractGateway;
 use Omnipay\Realexhosted\Message\PurchaseRequest;
 
 /**
- * Postfinance Gateway
+ * Realex Hosted Gateway
  */
 class Gateway extends AbstractGateway
 {

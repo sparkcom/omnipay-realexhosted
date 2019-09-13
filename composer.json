@@ -9,6 +9,10 @@
         {
             "name": "Thomas Faurbye Nielsen",
             "email": "tfn@monosolutions.com"
+        },
+        {
+            "name": "Jesper Vingborg Andersen",
+            "email": "jva@monosolutions.com"
         }
     ],
     "minimum-stability": "stable",
