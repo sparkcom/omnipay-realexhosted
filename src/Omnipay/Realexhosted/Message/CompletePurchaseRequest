@@ -1,0 +1,100 @@
+<?php
+
+
+namespace Omnipay\Realexhosted\Message;
+use GlobalPayments\Api\Utils\GenerationUtils;
+use GlobalPayments\Api\Entities\Enums\ShaHashType;
+use Omnipay\Common\Exception\InvalidResponseException;
+use Omnipay\Common\Message\AbstractResponse;
+
+class CompletePurchaseRequest extends PurchaseRequest
+{
+    public function getData()
+    {
+        //make sure hash code matched
+        $data =  $this->httpRequest->request->all();
+
+        if (!isset($data["SHA1HASH"]) ||  empty($data["SHA1HASH"])) {
+            throw new InvalidResponseException("SHA hash is missing. Please check your code and the Developers Documentation.");
+        }
+        $hash = (string) $data['SHA1HASH'];
+        $timestamp = $data["TIMESTAMP"];
+        $merchantId = $data["MERCHANT_ID"];
+        $orderId = $data["ORDER_ID"];
+        $result = $data["RESULT"];
+        $message =$data["MESSAGE"];
+        $transactionId = $data["PASREF"];
+        $authCode = $data["AUTHCODE"];
+
+
+        $myHash =   GenerationUtils::generateNewHash(
+            $this->getSharedSecret(),
+            implode('.', [
+                $timestamp,
+                $merchantId,
+                $orderId,
+                $result,
+                $message,
+                $transactionId,
+                $authCode
+            ]),
+            ShaHashType::SHA1
+        );
+
+        if ($myHash !== $hash) {
+            throw new InvalidResponseException("Hash not matched");
+        }
+
+
+
+        return $data;
+    }
+
+    public function sendData($data)
+    {
+        return $this->response = new CompletePurchaseResponse($this, $data);
+    }
+}
+
+
+class CompletePurchaseResponse extends AbstractResponse
+{
+    public function isSuccessful()
+    {
+        return isset($this->data['RESULT']) && '00' === $this->data['RESULT'];
+    }
+
+    public function isCancelled()
+    {
+        return isset($this->data['RESULT']) && '00' !== $this->data['RESULT'];
+    }
+
+    public function getTransactionReference()
+    {
+        return isset($this->data['PASREF']) ? $this->data['PASREF'] : null;
+    }
+
+    public function getMessage()
+    {
+        return isset($this->data['MESSAGE']) ? $this->data['MESSAGE'] : null;
+    }
+
+    /**
+     * Optional step: Redirect the customer back to your own domain.
+     *
+     * This is achieved by returning a HTML string containing a meta-redirect which is displayed by WorldPay
+     * to the customer. This is far from ideal, but apparently (according to their support) this is the only
+     * method currently available.
+     *
+     * @param string $returnUrl The URL to forward the customer to.
+     * @param string|null $message   Optional message to display to the customer before they are redirected.
+     */
+    public function confirm($returnUrl, $message = null)
+    {
+        if (empty($message)) {
+            $message = 'Thank you, your transaction has been processed. You are being redirected...';
+        }
+        echo '<meta http-equiv="refresh" content="2;url='.$returnUrl.'" /><p>'.$message.'</p>';
+        exit;
+    }
+}
