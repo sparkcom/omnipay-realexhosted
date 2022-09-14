@@ -68,5 +68,8 @@ class Gateway extends AbstractGateway
     {
         return $this->createRequest('\Omnipay\Realexhosted\Message\PurchaseRequest', $parameters);
     }
-
+ public function completePurchase(array $parameters = array())
+    {
+        return $this->createRequest('\Omnipay\Realexhosted\Message\CompletePurchaseRequest', $parameters);
+    }
 }
