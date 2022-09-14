@@ -65,34 +65,65 @@ class PurchaseRequest extends AbstractRequest
 
     public function getData()
     {
-        $this->validate('merchantId', 'amount', 'transactionReference', 'currency', 'sharedSecret', 'timestamp');
+        $this->setTimestamp(time ());
+        $this->validate('merchantId', 'amount',  'currency', 'sharedSecret', 'timestamp');
 
         $data = $this->parameters->all();
 
-        $order = $data['order'];
-        $billingInformation = $order->getBillingInformation();
-        $shippingInformation = $order->getShippingInformation();
 
+
+        //get country numeric code
         $countryRepository = new CountryRepository();
+        if ($card = $this->getCard()) {
+            $billingCountryCode = $card->getBillingCountry();
+            if (empty($billingCountryCode)) {
+                throw new \InvalidArgumentException('Unknown or empty billing country');
+            }
+            $billingCountry = $countryRepository->get($billingCountryCode);
+            if($billingCountry)
+                $data["HPP_BILLING_COUNTRY"] = $billingCountry->getNumericCode();
 
-        $billingCountryCode = strtolower($billingInformation->getCountryCode());
-        if (empty($billingCountryCode)) {
-            throw new \InvalidArgumentException('Unknown or empty billing country');
+
+            $shippingCountryCode = $card->getShippingCountry();
+            if (empty($shippingCountryCode)) {
+              //  throw new \InvalidArgumentException('Unknown or empty shipping country');
+            }else{
+                $shippingCountry = $countryRepository->get($shippingCountryCode);
+                if($shippingCountry)
+                    $data["HPP_SHIPPING_COUNTRY"] = $shippingCountry->getNumericCode();
+            }
+
+
+
+            // BEGIN: Mandatory SCA fields
+            $data["HPP_CUSTOMER_EMAIL"] =  $card->getEmail();
+            $data["HPP_CUSTOMER_PHONENUMBER_MOBILE"] = $card->getBillingPhone();
+
+            $data["HPP_BILLING_STREET1"] = $card->getBillingAddress1();
+            $data["HPP_BILLING_STREET2"] = $card->getBillingAddress2();
+            $data["HPP_BILLING_STREET3"] = '';
+            $data["HPP_BILLING_CITY"] = $card->getBillingCity();
+            $data["HPP_BILLING_POSTALCODE"] = $card->getBillingPostcode();
+            $data["HPP_SHIPPING_STATE"] = $card->getBillingState();
+
+            $data["HPP_SHIPPING_STREET1"] = $card->getShippingAddress1();
+            $data["HPP_SHIPPING_STREET2"] = $card->getShippingAddress2();
+            $data["HPP_SHIPPING_STREET3"] ='';
+            $data["HPP_SHIPPING_CITY"] =$card->getShippingCity();
+            $data["HPP_SHIPPING_STATE"] =$card->getShippingState();
+            $data["HPP_SHIPPING_POSTALCODE"] = $card->getShippingPostcode();
+
+            // END: Mandatory SCA fields.
+
         }
 
-        $shippingCountryCode = strtolower($shippingInformation->getCountryCode());
-        if (empty($shippingCountryCode)) {
-            throw new \InvalidArgumentException('Unknown or empty shipping country');
-        }
 
-        $billingCountry = $countryRepository->get($billingCountryCode);
-        $shippingCountry = $countryRepository->get($shippingCountryCode);
 
 
         $data = array_change_key_case($data, CASE_UPPER);
         $data['AMOUNT'] = $this->getAmountInteger();
         $data['CURRENCY'] = $this->getCurrency();
-        $data['ORDER_ID'] = $this->getTransactionReference();
+        $data['ORDER_ID'] = $this->getTransactionId();
 
         $data['MERCHANT_RESPONSE_URL'] = $this->getNotifyUrl();
         $data['AUTO_SETTLE_FLAG'] = 1;
@@ -102,25 +133,7 @@ class PurchaseRequest extends AbstractRequest
         $data["HPP_VERSION"] = "2";
         $data["HPP_CHANNEL"] = "ECOM";
 
-        // BEGIN: Mandatory SCA fields
-        $data["HPP_CUSTOMER_EMAIL"] = $billingInformation->getEmail();
-        $data["HPP_CUSTOMER_PHONENUMBER_MOBILE"] = $billingInformation->getPhone();
 
-        $data["HPP_BILLING_STREET1"] = $billingInformation->getAddressLine1();
-        $data["HPP_BILLING_STREET2"] = $billingInformation->getAddressLine2();
-        $data["HPP_BILLING_STREET3"] = $billingInformation->getAddressLine2();
-        $data["HPP_BILLING_CITY"] = $billingInformation->getLocality();
-        $data["HPP_BILLING_POSTALCODE"] = $billingInformation->getPostalCode();
-        $data["HPP_BILLING_COUNTRY"] = $billingCountry->getNumericCode();
-
-        $data["HPP_SHIPPING_STREET1"] = $shippingInformation->getAddressLine1();
-        $data["HPP_SHIPPING_STREET2"] = $shippingInformation->getAddressLine2();
-        $data["HPP_SHIPPING_STREET3"] = $shippingInformation->getAddressLine2();
-        $data["HPP_SHIPPING_CITY"] = $shippingInformation->getLocality();
-        $data["HPP_SHIPPING_STATE"] = $shippingInformation->getAdministrativeArea();
-        $data["HPP_SHIPPING_POSTALCODE"] = $shippingInformation->getPostalCode();
-        $data["HPP_SHIPPING_COUNTRY"] = $shippingCountry->getNumericCode();
-        // END: Mandatory SCA fields.
 
         $data["HPP_ADDRESS_MATCH_INDICATOR"] = "FALSE";
         $data["HPP_CHALLENGE_REQUEST_INDICATOR"] = "NO_PREFERENCE";
@@ -130,6 +143,10 @@ class PurchaseRequest extends AbstractRequest
         unset($data['SHAREDSECRET']);
         unset($data['MERCHANTID']);
         unset($data['TESTMODE']);
+        unset($data['CARD']);
+        unset($data['RETURNURL']);
+        unset($data['CANCELURL']);
+        unset($data['TRANSACTIONID']);
 
         return $data;
     }
